@@ -1,0 +1,105 @@
+---
+title: "rentrez_covidIndonesia"
+author: "Kadek Adit Wiryadana"
+date: "1/16/2022"
+output: html_document
+---
+
+
+```{r library}
+library(rentrez)
+library(ggplot2)
+library(tidyverse)
+library(patchwork)
+```
+
+```{r get_key}
+key <- Sys.getenv("ENTREZ_KEY")
+set_entrez_key(key)
+```
+
+
+```{r search}
+art_search <- entrez_search(db="pubmed", 
+                            term="(COVID[TITLE]) AND (INDONESIA[Title/Abstract])", 
+                            use_history=TRUE)
+art_summs <- entrez_summary(db="pubmed", web_history=art_search$web_history)
+art_summs
+```
+
+```{r tabulation}
+journals <- extract_from_esummary(art_summs, "source")
+journal_freq <- as.data.frame(table(journals, dnn="journal"), responseName="n.papers")
+
+journal_freq_2 <- journal_freq %>% filter(n.papers >=2)
+
+journal_freq_1 <- journal_freq %>% filter(n.papers <=1)
+
+
+```
+
+```{r plotting, fig.align='center', fig.height=8, fig.width=8}
+plot <- ggplot(journal_freq_2, aes(reorder(journal, n.papers), n.papers)) + 
+    geom_point(size=2) + 
+    coord_flip() + 
+    scale_y_continuous("Number of papers", breaks = c(1:max(journal_freq_2$n.papers))) +
+    scale_x_discrete("Journal") +
+    theme_minimal() +
+    #ggtitle("Journal that Publish COVID-19 from Indonesian Authors") +
+    labs(
+      title = "Journal that Publish COVID-19 from Indonesian Authors",
+      caption = "Data accessed through NCBI Entrez API using Rentrez Package | Kadek Adit Wiryadana"
+        ) +
+    theme(
+      plot.title = element_text(hjust = 0.5),
+      plot.caption = element_text(hjust = 0.5, face = "italic")
+    )
+plot
+ggsave("plot1.jpg", bg="white")
+```
+
+
+```{r plotting_2, fig.align='center', fig.height=9, fig.width=3}
+plot2 <- ggplot(journal_freq_1[1:60,], aes(reorder(journal, n.papers), n.papers)) + 
+    geom_point(size=1) + 
+    coord_flip() + 
+    scale_y_continuous("", limits = c(1:2), breaks = c(1,2)) +
+    #scale_x_discrete("Journal") +
+    scale_x_discrete(element_blank()) +
+    theme_minimal() 
+    #ggtitle("Journal that Publish COVID-19 from Indonesian Authors") 
+plot2
+
+plot3 <- ggplot(journal_freq_1[61:120,], aes(reorder(journal, n.papers), n.papers)) + 
+    geom_point(size=1) + 
+    coord_flip() + 
+    scale_y_continuous("Number of papers", limits = c(1:2), breaks = c(1,2)) +
+    #scale_x_discrete("Journal") +
+    scale_x_discrete(element_blank()) +
+    theme_minimal() 
+    #ggtitle("Journal that Publish COVID-19 from Indonesian Authors") 
+plot3
+
+plot4 <- ggplot(journal_freq_1[121:nrow(journal_freq_1),], aes(reorder(journal, n.papers), n.papers)) + 
+    geom_point(size=1) + 
+    coord_flip() + 
+    scale_y_continuous("", limits = c(1:2), breaks = c(1,2)) +
+    #scale_x_discrete("Journal") +
+    scale_x_discrete(element_blank()) +
+    theme_minimal() 
+    #ggtitle("Journal that Publish COVID-19 from Indonesian Authors") 
+plot4
+
+```
+
+```{r patchwork, fig.align='center', fig.height=9, fig.width=9}
+#patchword
+patch <- (plot2 | plot3 | plot4)
+patch + plot_annotation(
+  title = "Journal that Publish <2 Articles",
+  caption = "Data accessed through NCBI Entrez API using Rentrez Package | Kadek Adit Wiryadana"
+)
+
+ggsave("patched.png")
+```
+
